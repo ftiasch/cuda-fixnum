@@ -144,23 +144,6 @@ public:
     add_cy(r, cy, a, b);
   }
 
-  __device__ __forceinline__ static void add_cc(uint64_t &r, bool &cy_hi,
-                                                uint64_t a, uint64_t b) {
-    bool cy;
-    digit::add_cy(r, cy, a, b);
-    bool r_cy = effective_carries_p(cy_hi, r == ~static_cast<uint64_t>(0), cy);
-    r += r_cy;
-  }
-
-  __device__ __forceinline__ static void
-  addc_cc(uint64_t &r, bool &cy_hi, uint64_t a, uint64_t b, bool cy_lo) {
-    bool cy;
-    digit::add_cy(r, cy, a, b);
-    bool r_cy =
-        effective_carries_p(cy_hi, r == ~static_cast<uint64_t>(0), cy, cy_lo);
-    r += r_cy;
-  }
-
   // TODO: Handle borrow in
   __device__ static void sub_br(fixnum &r, digit &br_hi, fixnum a, fixnum b) {
     digit br;
@@ -583,32 +566,6 @@ private:
 
   __device__ static digit effective_carries(digit &cy_hi, int propagate, int cy,
                                             int cy_lo) {
-    static_assert(layout::WIDTH < WARPSIZE, "does not handle high overflow.");
-    int L = layout::laneIdx();
-    uint32_t allcarries, p, g;
-    g = layout::ballot(cy);           // carry generate
-    p = layout::ballot(propagate);    // carry propagate
-    allcarries = (p | g) + g + cy_lo; // propagate all carries
-    cy_hi = ((allcarries >> layout::WIDTH) & 1);
-    allcarries = (allcarries ^ p) | (g << 1) | cy_lo; // get effective carries
-    return (allcarries >> L) & 1;
-  }
-
-  __device__ __forceinline__ static bool
-  effective_carries_p(bool &cy_hi, bool propagate, bool cy) {
-    static_assert(layout::WIDTH < WARPSIZE, "does not handle high overflow.");
-    int L = layout::laneIdx();
-    uint32_t allcarries, p, g;
-    g = layout::ballot(cy);        // carry generate
-    p = layout::ballot(propagate); // carry propagate
-    allcarries = (p | g) + g;      // propagate all carries
-    cy_hi = ((allcarries >> layout::WIDTH) & 1);
-    allcarries = (allcarries ^ p) | (g << 1); // get effective carries
-    return (allcarries >> L) & 1;
-  }
-
-  __device__ __forceinline__ static bool
-  effective_carries_p(bool &cy_hi, bool propagate, bool cy, bool cy_lo) {
     static_assert(layout::WIDTH < WARPSIZE, "does not handle high overflow.");
     int L = layout::laneIdx();
     uint32_t allcarries, p, g;
